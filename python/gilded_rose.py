@@ -1,4 +1,5 @@
 from enum import StrEnum
+from abc import abstractmethod
 
 BASE_DECREASE = -1
 BASE_INCREASE = 1
@@ -31,55 +32,7 @@ class GildedRose(object):
 
     def update_quality(self):
         for item in self.items:
-            match item.name:
-                case "Aged Brie":
-                    if item.quality < BASE_UPPER_QUALITY_BOUND:
-                        if item.sell_in > BASE_LOWER_QUALITY_BOUND:
-                            item.modify_quality(BASE_INCREASE)
-                        else:
-                            item.modify_quality(BRIE_DECAY_MULTIPLIER * BASE_INCREASE)
-                case "Sulfuras, Hand of Ragnaros":
-                    continue
-                case "Backstage passes to a TAFKAL80ETC concert":
-                    if item.sell_in <= BASE_LOWER_QUALITY_BOUND:
-                        item.quality = BASE_LOWER_QUALITY_BOUND
-                    else:
-                        if item.quality < BASE_UPPER_QUALITY_BOUND:
-                            if item.sell_in > TICKETS_FIRST_INCREASE_THRESHOLD:
-                                item.modify_quality(BASE_INCREASE)
-                            elif item.sell_in > TICKETS_SECOND_INCREASE_THRESHOLD:
-                                item.modify_quality(TICKETS_FIRST_QUALITY_MODIFIER)
-                            elif item.sell_in > BASE_LOWER_QUALITY_BOUND:
-                                item.modify_quality(TICKETS_SECOND_QUALITY_MODIFIER)
-                case "Conjured":
-                    if item.sell_in > BASE_LOWER_QUALITY_BOUND:
-                        item.modify_quality(CONJURED_MULTIPLIER * BASE_DECREASE)
-                    else:
-                        item.modify_quality(CONJURED_MULTIPLIER * PAST_SELLIN_MULTIPLIER * BASE_DECREASE)
-                case "Bad Item":
-                    if item.sell_in > BASE_LOWER_QUALITY_BOUND:
-                        item.modify_quality(BASE_DECREASE)
-                    else:
-                        item.modify_quality(PAST_SELLIN_MULTIPLIER * BASE_DECREASE)
-                    item.bound_quality_custom(BAD_ITEM_LOWER_BOUND, BASE_UPPER_QUALITY_BOUND)
-                    item.sell_in -= DAILY_DECREMENT   
-                    continue
-                case "Milk":
-                    if item.sell_in > BASE_LOWER_QUALITY_BOUND:
-                        item.modify_quality(BASE_DECREASE)
-                    else:
-                        item.quality -= int(-BASE_DECREASE * pow(MILK_DECAYING_FACTOR, abs(item.sell_in)))
-                    item.bound_quality_custom(MILK_LOWER_BOUND, BASE_UPPER_QUALITY_BOUND)
-                    item.sell_in -= DAILY_DECREMENT   
-                    continue
-                case _:
-                    if item.quality > BASE_LOWER_QUALITY_BOUND:
-                        if item.sell_in > BASE_LOWER_QUALITY_BOUND:
-                            item.modify_quality(BASE_DECREASE)
-                        else:
-                            item.modify_quality(PAST_SELLIN_MULTIPLIER * BASE_DECREASE)
-            item.bound_quality_custom(BASE_LOWER_QUALITY_BOUND, BASE_UPPER_QUALITY_BOUND)
-            item.sell_in -= DAILY_DECREMENT   
+            item.update()
 
 class Item:
     def __init__(self, name, sell_in, quality):
@@ -97,5 +50,85 @@ class Item:
     def modify_quality(self, value):
         self.quality += value
 
+    @abstractmethod
+    def update():
+        pass
+
     def __repr__(self):
         return "%s, %s, %s" % (self.name, self.sell_in, self.quality)
+
+
+class BaseItem(Item):
+    def update(self):
+        if self.quality > BASE_LOWER_QUALITY_BOUND:
+            if self.sell_in > BASE_LOWER_QUALITY_BOUND:
+                self.modify_quality(BASE_DECREASE)
+            else:
+                self.modify_quality(PAST_SELLIN_MULTIPLIER * BASE_DECREASE)
+        self.bound_quality_custom(BASE_LOWER_QUALITY_BOUND, BASE_UPPER_QUALITY_BOUND)
+        self.sell_in -= DAILY_DECREMENT
+
+class BrieItem(Item):
+    def update(self):
+        if self.quality < BASE_UPPER_QUALITY_BOUND:
+            if self.sell_in > BASE_LOWER_QUALITY_BOUND:
+                self.modify_quality(BASE_INCREASE)
+            else:
+                self.modify_quality(BRIE_DECAY_MULTIPLIER * BASE_INCREASE)
+        self.bound_quality_custom(BASE_LOWER_QUALITY_BOUND, BASE_UPPER_QUALITY_BOUND)
+        self.sell_in -= DAILY_DECREMENT
+
+class TicketsItem(Item):    
+    def update(self):
+        if self.sell_in <= BASE_LOWER_QUALITY_BOUND:
+            self.quality = BASE_LOWER_QUALITY_BOUND
+        else:
+            if self.quality < BASE_UPPER_QUALITY_BOUND:
+                if self.sell_in > TICKETS_FIRST_INCREASE_THRESHOLD:
+                    self.modify_quality(BASE_INCREASE)
+                elif self.sell_in > TICKETS_SECOND_INCREASE_THRESHOLD:
+                    self.modify_quality(TICKETS_FIRST_QUALITY_MODIFIER)
+                elif self.sell_in > BASE_LOWER_QUALITY_BOUND:
+                    self.modify_quality(TICKETS_SECOND_QUALITY_MODIFIER)
+        self.bound_quality_custom(BASE_LOWER_QUALITY_BOUND, BASE_UPPER_QUALITY_BOUND)
+        self.sell_in -= DAILY_DECREMENT
+
+class ConjuredItem(Item):
+    
+    def update(self):
+        if self.sell_in > BASE_LOWER_QUALITY_BOUND:
+            self.modify_quality(CONJURED_MULTIPLIER * BASE_DECREASE)
+        else:
+            self.modify_quality(CONJURED_MULTIPLIER * PAST_SELLIN_MULTIPLIER * BASE_DECREASE)
+        self.bound_quality_custom(BASE_LOWER_QUALITY_BOUND, BASE_UPPER_QUALITY_BOUND)
+        self.sell_in -= DAILY_DECREMENT
+
+class BadItem(Item):
+    def __init__(self, name, sell_in, quality):
+        super().__init__(name, sell_in, quality)
+        self.bound_quality_custom(BAD_ITEM_LOWER_BOUND, BASE_UPPER_QUALITY_BOUND)
+
+    def update(self):
+        if self.sell_in > BASE_LOWER_QUALITY_BOUND:
+            self.modify_quality(BASE_DECREASE)
+        else:
+            self.modify_quality(PAST_SELLIN_MULTIPLIER * BASE_DECREASE)
+        self.bound_quality_custom(BAD_ITEM_LOWER_BOUND, BASE_UPPER_QUALITY_BOUND)
+        self.sell_in -= DAILY_DECREMENT
+
+class MilkItem(Item):
+    def __init__(self, name, sell_in, quality):
+        super().__init__(name, sell_in, quality)
+        self.bound_quality_custom(MILK_LOWER_BOUND, BASE_UPPER_QUALITY_BOUND)
+
+    def update(self):
+        if self.sell_in > BASE_LOWER_QUALITY_BOUND:
+            self.modify_quality(BASE_DECREASE)
+        else:
+            self.quality -= int(-BASE_DECREASE * pow(MILK_DECAYING_FACTOR, abs(self.sell_in)))
+        self.bound_quality_custom(MILK_LOWER_BOUND, BASE_UPPER_QUALITY_BOUND)
+        self.sell_in -= DAILY_DECREMENT
+
+class SulfurasItem(Item):
+    def update(self):
+        pass
