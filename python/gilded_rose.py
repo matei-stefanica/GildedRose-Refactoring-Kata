@@ -6,42 +6,44 @@ class GildedRose(object):
         self.items = items
 
     def update_quality(self):
+        NORMAL_DECREASE = 1
+        NORMAL_INCREASE = 1
+
         for item in self.items:
-            if item.name != "Aged Brie" and item.name != "Backstage passes to a TAFKAL80ETC concert" and item.name != "Sulfuras, Hand of Ragnaros":
-                if item.quality > 0:
-                    if item.sell_in > 0:
-                        item.quality -= 1
-                    else:
-                        item.quality -= 2
-            else:
-                if item.name == "Aged Brie":
+            match item.name:
+                case "Aged Brie":
                     if item.quality < 50:
                         if item.sell_in > 0:
-                            item.quality += 1
+                            item.quality += NORMAL_INCREASE
                         else:
-                            item.quality += 2
-                elif item.name == "Sulfuras, Hand of Ragnaros":
+                            item.quality = min(50, item.quality + NORMAL_INCREASE * 2)
+                case "Sulfuras, Hand of Ragnaros":
                     continue
-            
-                elif item.name == "Backstage passes to a TAFKAL80ETC concert":
+                case "Backstage passes to a TAFKAL80ETC concert":
                     if item.sell_in <= 0:
                         item.quality = 0
-                        
                     else:
                         if item.quality < 50:
                             if item.sell_in > 10:
-                                item.quality += 1
+                                item.quality += NORMAL_INCREASE
                             elif item.sell_in > 5:
                                 item.quality = min(50, item.quality + 2)
-                            elif item.sell_in > 3:
+                            elif item.sell_in > 0:
                                 item.quality = min(50, item.quality + 3)
+                case _:
+                    if item.quality > 0:
+                        if item.sell_in > 0:
+                            item.quality -= NORMAL_DECREASE
+                        else:
+                            item.quality -= 2 * NORMAL_DECREASE
+                
             item.sell_in -= 1            
 
 class Item:
     def __init__(self, name, sell_in, quality):
         self.name = name
         self.sell_in = sell_in
-        self.quality = quality
+        self.quality = min(quality, 50)
 
     def __repr__(self):
         return "%s, %s, %s" % (self.name, self.sell_in, self.quality)
