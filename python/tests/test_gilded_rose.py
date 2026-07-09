@@ -156,6 +156,14 @@ class GildedRoseTest(unittest.TestCase):
         self.assertEqual(tickets, items[0].name)
         self.assertEqual(50, items[0].quality)
         self.assertEqual(1, items[0].sell_in)
+
+    def test_quality_cant_be_negative_when_creating_the_object(self):
+        items = [Item(normal_item, 20, -3)]
+        gilded_rose = GildedRose(items)
+        gilded_rose.update_quality()
+        self.assertEqual(normal_item, items[0].name)
+        self.assertEqual(0, items[0].quality)
+        self.assertEqual(19, items[0].sell_in)
         
 if __name__ == '__main__':
     unittest.main()
