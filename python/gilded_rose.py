@@ -125,4 +125,4 @@ class MilkItem(Item):
 
 class SulfurasItem(Item):
     def update(self):
-        pass
+        raise ValueError("Sulfuras is unyielding, this relic shall not be altered!")

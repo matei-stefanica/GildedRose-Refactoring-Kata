@@ -55,9 +55,10 @@ class GildedRoseTest(unittest.TestCase):
     def test_sulfuras_never_changes_properties(self):
         items = [SulfurasItem(ProductName.SULFURAS, 12, 23)]
         gilded_rose = GildedRose(items)
-        gilded_rose.update_quality()
-        self.assertEqual(23, items[0].quality)
-        self.assertEqual(12, items[0].sell_in)
+        with self.assertRaises(ValueError) as context:
+            gilded_rose.update_quality()
+        self.assertEqual(str(context.exception), "Sulfuras is unyielding, this relic shall not be altered!")
+
 
     def test_backstage_passes_with_more_than_5_days_but_less_than_10(self):
         items = [TicketsItem(ProductName.TICKETS, 12, 23)]
