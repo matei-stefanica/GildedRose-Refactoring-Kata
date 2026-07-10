@@ -1,12 +1,12 @@
 from enum import StrEnum
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 
 BASE_DECREASE = -1
 BASE_INCREASE = 1
 MILK_DECAYING_FACTOR = 1.1
 BASE_UPPER_QUALITY_BOUND = 50
 BASE_LOWER_QUALITY_BOUND = 0
-BRIE_DECAY_MULTIPLIER = 2
+BRIE_DEVELOPMENT_FACTOR = 2
 TICKETS_FIRST_INCREASE_THRESHOLD = 10
 TICKETS_SECOND_INCREASE_THRESHOLD = 5
 TICKETS_FIRST_QUALITY_MODIFIER = 2
@@ -34,7 +34,7 @@ class GildedRose(object):
         for item in self.items:
             item.update()
 
-class Item:
+class Item(ABC):
     def __init__(self, name, sell_in, quality):
         self.name = name
         self.sell_in = sell_in
@@ -42,10 +42,7 @@ class Item:
         self.bound_quality_custom(BASE_LOWER_QUALITY_BOUND, BASE_UPPER_QUALITY_BOUND)
 
     def bound_quality_custom(self, lowerBound, upperBound):
-        if self.quality < lowerBound:
-            self.quality = lowerBound
-        if self.quality > upperBound:
-            self.quality = upperBound
+        self.quality = min(upperBound, max(self.quality, lowerBound))
 
     def modify_quality(self, value):
         self.quality += value
@@ -60,21 +57,19 @@ class Item:
 
 class BaseItem(Item):
     def update(self):
-        if self.quality > BASE_LOWER_QUALITY_BOUND:
-            if self.sell_in > BASE_LOWER_QUALITY_BOUND:
-                self.modify_quality(BASE_DECREASE)
-            else:
-                self.modify_quality(PAST_SELLIN_MULTIPLIER * BASE_DECREASE)
+        if self.sell_in > BASE_LOWER_QUALITY_BOUND:
+            self.modify_quality(BASE_DECREASE)
+        else:
+            self.modify_quality(PAST_SELLIN_MULTIPLIER * BASE_DECREASE)
         self.bound_quality_custom(BASE_LOWER_QUALITY_BOUND, BASE_UPPER_QUALITY_BOUND)
         self.sell_in -= DAILY_DECREMENT
 
 class BrieItem(Item):
     def update(self):
-        if self.quality < BASE_UPPER_QUALITY_BOUND:
-            if self.sell_in > BASE_LOWER_QUALITY_BOUND:
-                self.modify_quality(BASE_INCREASE)
-            else:
-                self.modify_quality(BRIE_DECAY_MULTIPLIER * BASE_INCREASE)
+        if self.sell_in > BASE_LOWER_QUALITY_BOUND:
+            self.modify_quality(BASE_INCREASE)
+        else:
+            self.modify_quality(BRIE_DEVELOPMENT_FACTOR * BASE_INCREASE)
         self.bound_quality_custom(BASE_LOWER_QUALITY_BOUND, BASE_UPPER_QUALITY_BOUND)
         self.sell_in -= DAILY_DECREMENT
 
@@ -83,13 +78,12 @@ class TicketsItem(Item):
         if self.sell_in <= BASE_LOWER_QUALITY_BOUND:
             self.quality = BASE_LOWER_QUALITY_BOUND
         else:
-            if self.quality < BASE_UPPER_QUALITY_BOUND:
-                if self.sell_in > TICKETS_FIRST_INCREASE_THRESHOLD:
-                    self.modify_quality(BASE_INCREASE)
-                elif self.sell_in > TICKETS_SECOND_INCREASE_THRESHOLD:
-                    self.modify_quality(TICKETS_FIRST_QUALITY_MODIFIER)
-                elif self.sell_in > BASE_LOWER_QUALITY_BOUND:
-                    self.modify_quality(TICKETS_SECOND_QUALITY_MODIFIER)
+            if self.sell_in > TICKETS_FIRST_INCREASE_THRESHOLD:
+                self.modify_quality(BASE_INCREASE)
+            elif self.sell_in > TICKETS_SECOND_INCREASE_THRESHOLD:
+                self.modify_quality(TICKETS_FIRST_QUALITY_MODIFIER)
+            elif self.sell_in > BASE_LOWER_QUALITY_BOUND:
+                self.modify_quality(TICKETS_SECOND_QUALITY_MODIFIER)
         self.bound_quality_custom(BASE_LOWER_QUALITY_BOUND, BASE_UPPER_QUALITY_BOUND)
         self.sell_in -= DAILY_DECREMENT
 
